@@ -137,6 +137,12 @@ body.page-scroll-locked{position:fixed;left:0;right:0;width:100%;overflow:hidden
 .danger-btn:hover{background:#c72a38;border-color:#e04451;transform:translateY(-1px)}
 .danger-btn:focus-visible{outline:2px solid #ff8c95;outline-offset:3px}
 @media (max-width:620px){.profile-danger-zone{justify-content:stretch}.danger-btn{width:100%}}
+.profile-data-zone{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin:42px 0 0;padding:24px 0;border-top:1px solid var(--line)}
+.data-copy{max-width:660px}.data-copy h3{margin:0 0 5px;font-size:1rem;letter-spacing:-.025em}.data-copy p{margin:0;color:var(--muted);font-size:.83rem;line-height:1.6}
+.data-actions{display:flex;flex:0 0 auto;gap:8px;flex-wrap:wrap}
+label.btn{cursor:pointer;display:inline-flex;align-items:center;-webkit-tap-highlight-color:transparent}
+.data-status{width:100%;margin-top:2px;color:var(--muted);font-size:.8rem;line-height:1.5;min-height:1.2em}
+@media (max-width:620px){.profile-data-zone{align-items:flex-start;flex-direction:column;gap:16px;margin-top:30px}.data-actions{flex-direction:column;width:100%}.data-actions .btn{width:100%;justify-content:center;min-height:44px}}
 
 
 /* Android / touch-screen responsiveness */

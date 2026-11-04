@@ -4,7 +4,7 @@
             "outputFile": "com.watchtrack.app-debug-4:/values_values.arsc.flat",
             "map": [
                 {
-                    "source": "/home/runner/work/WatchTrack-Android/WatchTrack-Android/WatchTrack-Android/app/src/main/res/values/styles.xml",
+                    "source": "/home/runner/work/WatchTrack/WatchTrack/WatchTrack-Android/app/src/main/res/values/styles.xml",
                     "from": {
                         "startLines": "2",
                         "startColumns": "4",

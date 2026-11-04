@@ -4,7 +4,7 @@
             "outputFile": "com.watchtrack.app-mergeDebugResources-2:/values/values.xml",
             "map": [
                 {
-                    "source": "/home/runner/work/WatchTrack-Android/WatchTrack-Android/WatchTrack-Android/app/src/main/res/values/styles.xml",
+                    "source": "/home/runner/work/WatchTrack/WatchTrack/WatchTrack-Android/app/src/main/res/values/styles.xml",
                     "from": {
                         "startLines": "2",
                         "startColumns": "4",

@@ -863,6 +863,78 @@ function resetTrackingData(){
   if(!confirm('Clear your WatchTrack history, TV progress, and wishlist? Your TMDB token will be kept.')) return;
   localStorage.setItem(STATE_KEY,JSON.stringify(defaultState())); location.reload();
 }
+
+const BACKUP_APP = 'WatchTrack backup';
+const BACKUP_VERSION = 1;
+
+function backupPayload(){
+  return { app: BACKUP_APP, version: BACKUP_VERSION, exportedAt: new Date().toISOString(), state: loadState() };
+}
+
+function validBackupState(incoming){
+  return Boolean(incoming) && typeof incoming === 'object'
+    && Array.isArray(incoming.watchedMovies)
+    && incoming.tvProgress && typeof incoming.tvProgress === 'object' && !Array.isArray(incoming.tvProgress)
+    && Array.isArray(incoming.wishlist);
+}
+
+function exportTrackingData(){
+  const status=document.getElementById('dataTransferStatus');
+  try{
+    const a=document.createElement('a');
+    // data: URLs download in browsers and are handed to the Android WebView's
+    // DownloadListener, which saves them to the device's Downloads folder.
+    a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(backupPayload(),null,2));
+    a.download=`watchtrack-backup-${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    if(status) status.textContent='Backup downloaded. Keep the file somewhere safe, it is your ticket to move this history to another device.';
+  }catch(err){
+    if(status) status.textContent='The backup could not be created in this browser.';
+  }
+}
+
+function applyBackupText(text){
+  const status=document.getElementById('dataTransferStatus');
+  let parsed;
+  try{ parsed=JSON.parse(text); }
+  catch(e){
+    if(status) status.textContent='That file could not be read as a WatchTrack backup.';
+    return;
+  }
+  const incoming=parsed && typeof parsed==='object' && parsed.state ? parsed.state : parsed;
+  if(!validBackupState(incoming)){
+    if(status) status.textContent='That file is not a WatchTrack backup.';
+    return;
+  }
+  const movies=incoming.watchedMovies.length;
+  const shows=Object.keys(incoming.tvProgress).length;
+  const wishlist=incoming.wishlist.length;
+  const when=parsed && parsed.exportedAt ? ` exported ${formatDate(parsed.exportedAt)}` : '';
+  const ok=confirm(`Import this backup${when}? It replaces the tracking data on this device: movies, TV progress, and wishlist. Your TMDB token stays.\n\nWatched movies: ${movies}\nShows in progress: ${shows}\nWishlist: ${wishlist}`);
+  if(!ok){
+    if(status) status.textContent='Import cancelled. Your data is unchanged.';
+    return;
+  }
+  localStorage.setItem(STATE_KEY,JSON.stringify({watchedMovies:incoming.watchedMovies,tvProgress:incoming.tvProgress,wishlist:incoming.wishlist}));
+  location.reload();
+}
+
+function importTrackingData(input){
+  const status=document.getElementById('dataTransferStatus');
+  const file=input.files && input.files[0];
+  input.value='';
+  if(!file) return;
+  if(file.type && file.type!=='application/json' && !/\.json$/i.test(file.name)){
+    if(status) status.textContent='That file is not a WatchTrack backup (.json).';
+    return;
+  }
+  const reader=new FileReader();
+  reader.onload=()=>applyBackupText(String(reader.result||''));
+  reader.onerror=()=>{ if(status) status.textContent='That file could not be read. Try exporting it again.'; };
+  reader.readAsText(file);
+}
 function refreshPage(){
   if(document.getElementById('watchingGrid')) initHome();
   if(document.getElementById('watchedMoviesList')) initProfile();

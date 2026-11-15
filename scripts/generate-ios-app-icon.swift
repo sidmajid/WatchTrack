@@ -1,5 +1,7 @@
-import AppKit
+import CoreGraphics
 import Foundation
+import ImageIO
+import UniformTypeIdentifiers
 
 let size = 1024
 let outputPath = CommandLine.arguments.last ?? "AppIcon.png"
@@ -10,48 +12,53 @@ try FileManager.default.createDirectory(
     withIntermediateDirectories: true
 )
 
-guard let bitmap = NSBitmapImageRep(
-    bitmapDataPlanes: nil,
-    pixelsWide: size,
-    pixelsHigh: size,
-    bitsPerSample: 8,
-    samplesPerPixel: 3,
-    hasAlpha: false,
-    isPlanar: false,
-    colorSpaceName: .deviceRGB,
-    bytesPerRow: 0,
-    bitsPerPixel: 24
-) else {
-    fatalError("Could not create the app icon bitmap.")
-}
+let colorSpace = CGColorSpaceCreateDeviceRGB()
+let bitmapInfo = CGImageAlphaInfo.noneSkipLast.rawValue
 
-guard let context = NSGraphicsContext(bitmapImageRep: bitmap) else {
+guard let context = CGContext(
+    data: nil,
+    width: size,
+    height: size,
+    bitsPerComponent: 8,
+    bytesPerRow: 0,
+    space: colorSpace,
+    bitmapInfo: bitmapInfo
+) else {
     fatalError("Could not create the app icon graphics context.")
 }
 
-NSGraphicsContext.saveGraphicsState()
-NSGraphicsContext.current = context
-context.imageInterpolation = .high
+context.setFillColor(CGColor(red: 0.043, green: 0.055, blue: 0.078, alpha: 1))
+context.fill(CGRect(x: 0, y: 0, width: size, height: size))
 
-NSColor(calibratedRed: 0.043, green: 0.055, blue: 0.078, alpha: 1).setFill()
-NSBezierPath(rect: NSRect(x: 0, y: 0, width: size, height: size)).fill()
+let mark = CGMutablePath()
+mark.move(to: CGPoint(x: 184, y: 706))
+mark.addLine(to: CGPoint(x: 364, y: 326))
+mark.addLine(to: CGPoint(x: 512, y: 590))
+mark.addLine(to: CGPoint(x: 660, y: 326))
+mark.addLine(to: CGPoint(x: 840, y: 706))
 
-let mark = NSBezierPath()
-mark.lineWidth = 104
-mark.lineCapStyle = .round
-mark.lineJoinStyle = .round
-mark.move(to: NSPoint(x: 184, y: 706))
-mark.line(to: NSPoint(x: 364, y: 326))
-mark.line(to: NSPoint(x: 512, y: 590))
-mark.line(to: NSPoint(x: 660, y: 326))
-mark.line(to: NSPoint(x: 840, y: 706))
-NSColor(calibratedRed: 0.79, green: 0.95, blue: 0.42, alpha: 1).setStroke()
-mark.stroke()
+context.addPath(mark)
+context.setStrokeColor(CGColor(red: 0.79, green: 0.95, blue: 0.42, alpha: 1))
+context.setLineWidth(104)
+context.setLineCap(.round)
+context.setLineJoin(.round)
+context.strokePath()
 
-NSGraphicsContext.restoreGraphicsState()
-
-guard let png = bitmap.representation(using: .png, properties: [:]) else {
-    fatalError("Could not encode the app icon as PNG.")
+guard let image = context.makeImage() else {
+    fatalError("Could not render the WatchTrack app icon.")
 }
-try png.write(to: outputURL, options: .atomic)
+guard let destination = CGImageDestinationCreateWithURL(
+    outputURL as CFURL,
+    UTType.png.identifier as CFString,
+    1,
+    nil
+) else {
+    fatalError("Could not create the PNG output destination.")
+}
+
+CGImageDestinationAddImage(destination, image, nil)
+guard CGImageDestinationFinalize(destination) else {
+    fatalError("Could not write the WatchTrack app icon.")
+}
+
 print("Generated \(size)x\(size) WatchTrack app icon at \(outputURL.path)")

@@ -1,0 +1,216 @@
+name: Build WatchTrack iOS IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - "web/**"
+      - "WatchTrack-iOS/**"
+      - "scripts/generate-ios-app-icon.swift"
+      - ".github/workflows/build-ios.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: macos-15
+    env:
+      APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      APPLE_PROVISIONING_PROFILE_BASE64: ${{ secrets.APPLE_PROVISIONING_PROFILE_BASE64 }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_SIGNING_ENABLED: "false"
+      APPLE_PROFILE_UUID: ""
+      APPLE_PROFILE_NAME: ""
+      APPLE_KEYCHAIN_PATH: ""
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check Xcode
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Prepare the iOS app resources
+        run: |
+          set -euo pipefail
+          mkdir -p WatchTrack-iOS/WatchTrack/Resources/www
+          rsync -a --delete web/ WatchTrack-iOS/WatchTrack/Resources/www/
+          swift scripts/generate-ios-app-icon.swift WatchTrack-iOS/WatchTrack/Assets.xcassets/AppIcon.appiconset/AppIcon.png
+          test -f WatchTrack-iOS/WatchTrack/Resources/www/index.html
+          test -f WatchTrack-iOS/WatchTrack/Resources/www/app.js
+          test -f WatchTrack-iOS/WatchTrack/Resources/www/styles.css
+          diff -qr web WatchTrack-iOS/WatchTrack/Resources/www/
+
+      - name: Generate the Xcode project
+        run: |
+          cd WatchTrack-iOS
+          xcodegen generate --spec project.yml
+
+      - name: Install Apple signing assets
+        if: ${{ env.APPLE_CERTIFICATE_BASE64 != '' && env.APPLE_CERTIFICATE_PASSWORD != '' && env.APPLE_PROVISIONING_PROFILE_BASE64 != '' && env.APPLE_TEAM_ID != '' }}
+        run: |
+          set -euo pipefail
+          CERTIFICATE_PATH="$RUNNER_TEMP/watchtrack-distribution.p12"
+          PROFILE_PATH="$RUNNER_TEMP/watchtrack-adhoc.mobileprovision"
+          PROFILE_PLIST="$RUNNER_TEMP/watchtrack-profile.plist"
+          KEYCHAIN_PATH="$RUNNER_TEMP/watchtrack-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
+
+          printf '%s' "$APPLE_CERTIFICATE_BASE64" | base64 -D > "$CERTIFICATE_PATH"
+          printf '%s' "$APPLE_PROVISIONING_PROFILE_BASE64" | base64 -D > "$PROFILE_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERTIFICATE_PATH" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          security cms -D -i "$PROFILE_PATH" > "$PROFILE_PLIST"
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c 'Print UUID' "$PROFILE_PLIST")
+          PROFILE_NAME=$(/usr/libexec/PlistBuddy -c 'Print Name' "$PROFILE_PLIST")
+          PROFILE_TEAM=$(/usr/libexec/PlistBuddy -c 'Print :TeamIdentifier:0' "$PROFILE_PLIST")
+          PROFILE_APP_ID=$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:application-identifier' "$PROFILE_PLIST")
+
+          if [ "$PROFILE_TEAM" != "$APPLE_TEAM_ID" ]; then
+            echo "Provisioning profile Team ID does not match APPLE_TEAM_ID." >&2
+            exit 1
+          fi
+          case "$PROFILE_APP_ID" in
+            "$APPLE_TEAM_ID.com.watchtrack.app.ios"|"$APPLE_TEAM_ID".*) ;;
+            *) echo "Provisioning profile does not cover com.watchtrack.app.ios." >&2; exit 1 ;;
+          esac
+
+          cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
+          echo "APPLE_PROFILE_UUID=$PROFILE_UUID" >> "$GITHUB_ENV"
+          echo "APPLE_PROFILE_NAME=$PROFILE_NAME" >> "$GITHUB_ENV"
+          echo "APPLE_KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
+          echo "APPLE_SIGNING_ENABLED=true" >> "$GITHUB_ENV"
+
+      - name: Build unsigned IPA or signed Ad Hoc IPA
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          rm -f release/WatchTrack-*.ipa
+
+          if [ "$APPLE_SIGNING_ENABLED" = "true" ]; then
+            xcodebuild archive \
+              -project WatchTrack-iOS/WatchTrack.xcodeproj \
+              -scheme WatchTrack \
+              -configuration Release \
+              -destination 'generic/platform=iOS' \
+              -archivePath "$RUNNER_TEMP/WatchTrack.xcarchive" \
+              -derivedDataPath "$RUNNER_TEMP/WatchTrackDerivedData" \
+              CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
+              DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+              CODE_SIGN_STYLE=Manual \
+              CODE_SIGN_IDENTITY="Apple Distribution" \
+              PROVISIONING_PROFILE_SPECIFIER="$APPLE_PROFILE_NAME" \
+              CODE_SIGNING_ALLOWED=YES
+
+            python3 - <<'PY'
+          import os, plistlib
+          options = {
+              "method": "ad-hoc",
+              "destination": "export",
+              "signingStyle": "manual",
+              "signingCertificate": "Apple Distribution",
+              "teamID": os.environ["APPLE_TEAM_ID"],
+              "provisioningProfiles": {
+                  "com.watchtrack.app.ios": os.environ["APPLE_PROFILE_NAME"]
+              },
+              "stripSwiftSymbols": True,
+              "compileBitcode": False,
+              "manageAppVersionAndBuildNumber": False,
+          }
+          with open(os.path.join(os.environ["RUNNER_TEMP"], "WatchTrack-ExportOptions.plist"), "wb") as stream:
+              plistlib.dump(options, stream)
+          PY
+
+            xcodebuild -exportArchive \
+              -archivePath "$RUNNER_TEMP/WatchTrack.xcarchive" \
+              -exportPath "$RUNNER_TEMP/WatchTrackExport" \
+              -exportOptionsPlist "$RUNNER_TEMP/WatchTrack-ExportOptions.plist"
+            IPA_SOURCE="$(find "$RUNNER_TEMP/WatchTrackExport" -maxdepth 2 -name '*.ipa' -print -quit)"
+            test -n "$IPA_SOURCE"
+            cp "$IPA_SOURCE" release/WatchTrack-adhoc.ipa
+            echo "IPA_PATH=release/WatchTrack-adhoc.ipa" >> "$GITHUB_ENV"
+            echo "IPA_KIND=ad-hoc-signed" >> "$GITHUB_ENV"
+          else
+            xcodebuild build \
+              -project WatchTrack-iOS/WatchTrack.xcodeproj \
+              -scheme WatchTrack \
+              -configuration Release \
+              -sdk iphoneos \
+              -destination 'generic/platform=iOS' \
+              -derivedDataPath "$RUNNER_TEMP/WatchTrackDerivedData" \
+              CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO
+
+            APP_PATH="$RUNNER_TEMP/WatchTrackDerivedData/Build/Products/Release-iphoneos/WatchTrack.app"
+            test -d "$APP_PATH"
+            mkdir -p "$RUNNER_TEMP/WatchTrackIPA/Payload"
+            cp -R "$APP_PATH" "$RUNNER_TEMP/WatchTrackIPA/Payload/WatchTrack.app"
+            (cd "$RUNNER_TEMP/WatchTrackIPA" && /usr/bin/zip -qry "$GITHUB_WORKSPACE/release/WatchTrack-unsigned.ipa" Payload)
+            echo "IPA_PATH=release/WatchTrack-unsigned.ipa" >> "$GITHUB_ENV"
+            echo "IPA_KIND=unsigned" >> "$GITHUB_ENV"
+          fi
+
+      - name: Validate IPA
+        run: |
+          set -euo pipefail
+          test -f "$IPA_PATH"
+          unzip -t "$IPA_PATH"
+          rm -rf "$RUNNER_TEMP/WatchTrackIPA-Verify"
+          mkdir -p "$RUNNER_TEMP/WatchTrackIPA-Verify"
+          unzip -q "$IPA_PATH" -d "$RUNNER_TEMP/WatchTrackIPA-Verify"
+          APP="$RUNNER_TEMP/WatchTrackIPA-Verify/Payload/WatchTrack.app"
+          test -f "$APP/Info.plist"
+          BUNDLE_ID=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist")
+          test "$BUNDLE_ID" = "com.watchtrack.app.ios"
+          if [ "$IPA_KIND" = "ad-hoc-signed" ]; then
+            codesign --verify --deep --strict "$APP"
+          fi
+          echo "Validated $IPA_PATH ($IPA_KIND), bundle ID: $BUNDLE_ID"
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WatchTrack-iOS-IPA
+          path: release/*.ipa
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Commit iOS project and IPA
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add WatchTrack-iOS README.md release
+          git add .github/workflows/build-ios.yml scripts/generate-ios-app-icon.swift
+          if git diff --cached --quiet; then
+            echo "No iOS source or IPA changes to publish."
+          else
+            git commit -m "Publish WatchTrack iOS test IPA"
+            git push
+          fi
+
+      - name: Clean up signing material
+        if: always()
+        run: |
+          if [ -n "$APPLE_KEYCHAIN_PATH" ]; then
+            security delete-keychain "$APPLE_KEYCHAIN_PATH" || true
+          fi
+          if [ -n "$APPLE_PROFILE_UUID" ]; then
+            rm -f "$HOME/Library/MobileDevice/Provisioning Profiles/$APPLE_PROFILE_UUID.mobileprovision"
+          fi

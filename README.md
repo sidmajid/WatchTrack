@@ -1,6 +1,6 @@
 # WatchTrack
 
-WatchTrack is a responsive movie and TV-show tracker built with HTML, CSS, and JavaScript, with an Android WebView wrapper. It uses [The Movie Database (TMDB)](https://www.themoviedb.org/) for catalogue metadata, artwork, cast and crew, and streaming-provider availability.
+WatchTrack is a responsive movie and TV-show tracker built with HTML, CSS, and JavaScript, with Android WebView and iOS WKWebView wrappers. It uses [The Movie Database (TMDB)](https://www.themoviedb.org/) for catalogue metadata, artwork, cast and crew, and streaming-provider availability.
 
 > **Project status:** personal project / test build. The APK in `release/` is a debug build for testing, not a Play Store release.
 
@@ -40,6 +40,15 @@ Download [`release/WatchTrack-debug.apk`](release/WatchTrack-debug.apk) on your 
 
 On first launch, select **TMDB Setup**, enter your TMDB API Read Access Token, set your provider country code, and save. This is a debug/test build, not a Play Store release. Internet access is needed for current TMDB data and streaming availability.
 
+## Install the iPhone test app
+
+The iOS build is published at [`release/WatchTrack-unsigned.ipa`](release/WatchTrack-unsigned.ipa) when Apple signing secrets have not been configured. **An unsigned IPA is not directly installable by tapping it.** Use a sideloading tool such as Sideloadly on a Windows or Mac computer to sign it with your own Apple ID during installation. A free Apple ID requires periodic re-signing; a paid Apple Developer account can be used for longer-lived Ad Hoc builds.
+
+For a directly installable Ad Hoc IPA, register your iPhone in your Apple Developer account, create an Apple Distribution certificate and an Ad Hoc provisioning profile for bundle ID `com.watchtrack.app.ios`, then add these GitHub Actions repository secrets: `APPLE_CERTIFICATE_BASE64`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_PROVISIONING_PROFILE_BASE64`, and `APPLE_TEAM_ID`. Never put signing credentials in source files or chat. With those secrets present, the iOS workflow exports `release/WatchTrack-adhoc.ipa`.
+
+The iOS app bundles the same website, stores its TMDB token and tracking data in the app's local WebKit storage, and uses the iOS share sheet for backup export. The iOS shell targets iOS 16 and later. Real-iPhone behavior still needs device testing.
+
+
 ## Build Android from source
 
 Requirements: Java 17, Android SDK platform 35, and Gradle 8.9 (or a compatible Android Studio installation).
@@ -57,10 +66,12 @@ The APK output is `WatchTrack-Android/app/build/outputs/apk/debug/app-debug.apk`
 
 - `web/` — website HTML, CSS, JavaScript, and website README.
 - `WatchTrack-Android/` — Android WebView wrapper source and Gradle configuration.
+- `WatchTrack-iOS/` — native SwiftUI/WKWebView wrapper and XcodeGen project specification.
 - `WatchTrack-Source.zip` — source bundle with its own top-level README and component documentation.
 - `release/WatchTrack-debug.apk` — latest published debug APK.
 - `docs/screenshots/` — README screenshots.
-- `.github/workflows/build-apk.yml` — automated build workflow.
+- `.github/workflows/build-apk.yml` — automated Android build workflow.
+- `.github/workflows/build-ios.yml` — automated iOS IPA build workflow.
 
 ## Security and attribution
 

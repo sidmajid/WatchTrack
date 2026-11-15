@@ -1,6 +1,6 @@
 # WatchTrack UI and Engineering Standards
 
-These are the project-specific rules distilled from the two requested reference repositories. They apply to the website and to the Android APK because the APK packages the same web interface in a WebView.
+These are the project-specific rules distilled from the two requested reference repositories. They apply to the website, the Android WebView APK, and the iOS WKWebView app because all three share the same web interface.
 
 ## Upstream references
 
@@ -40,12 +40,13 @@ Before adding motion, decide whether it serves feedback, spatial consistency, st
 - Gate hover-only effects with `@media (hover: hover) and (pointer: fine)`. Keep touch press feedback through an appropriate active state.
 - Prefer CSS transitions/animations for simple predetermined motion; do not add a motion library just for a fade or button press.
 
-## 4. Mobile web and Android WebView
+## 4. Mobile web, Android WebView, and iOS WKWebView
 
 - Treat touch, mouse, keyboard, and trackpad as potentially coexisting inputs. Use capability media queries rather than user-agent sniffing.
 - Keep touch feedback immediate; use `touch-action: manipulation` where it fits the interaction.
 - Use `100dvh`/ `100svh` where appropriate instead of relying blindly on `100vh`. Add safe-area insets only for layouts that need them.
 - Keep input text readable on phones (16px is the practical web baseline for avoiding iOS focus zoom). Do not disable zoom as a workaround.
+- In the iOS shell, use `WKWebView` (never deprecated `UIWebView`), respect system safe areas, keep the local content origin stable so `localStorage` survives launches, and bind any bundled-asset HTTP server to loopback only. Open external links with the system browser and bridge only the native features the web app actually needs (for example, backup export through the share sheet).
 - Test on real Android hardware for final claims about keyboard behavior, scrolling, safe areas, and tap interactions. Browser emulation is useful but does not fully replace hardware testing.
 
 ## 5. Edge cases and resilience
@@ -62,11 +63,11 @@ Prefer fixtures or test seams that exercise the same data path as production. Do
 
 ## 6. Code quality and release hygiene
 
-- Keep `web/` canonical and synchronize its files into the Android assets directory; verify the copies are identical.
+- Keep `web/` canonical and synchronize its files into both Android and iOS resource directories; verify the copies are identical.
 - Keep changes focused and preserve existing behavior unless the requested change intentionally changes it.
 - Avoid new dependencies without a concrete need. Keep secrets and tokens out of source, logs, screenshots, archives, and APKs.
 - Do not commit `.gradle/`, `build/`, `intermediates/`, local SDK data, or other machine-generated build caches. Publish only intended release artifacts.
-- Before shipping, run JavaScript syntax checks, HTML/CSS checks, responsive browser checks, the Android debug build, and a focused animation review when motion changes.
+- Before shipping, run JavaScript syntax checks, HTML/CSS checks, responsive browser checks, the Android debug build, the iOS Xcode build and IPA validation, and a focused animation review when motion changes.
 - Distinguish automated checks from manual checks and real-device checks in the final report.
 
 ## Review output for UI or animation changes

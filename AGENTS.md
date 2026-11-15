@@ -1,6 +1,6 @@
 # WatchTrack Agent Instructions
 
-These rules apply to every change to the WatchTrack website, Android WebView app, UI, animations, documentation, screenshots, and release workflow. Read this file before editing.
+These rules apply to every change to the WatchTrack website, Android WebView app, iOS WKWebView app, UI, animations, documentation, screenshots, and release workflow. Read this file before editing.
 
 ## Required design references
 
@@ -18,7 +18,7 @@ Do not copy entire upstream repositories or Apple HIG text into this project. Li
 
 ## Platform interpretation
 
-WatchTrack is a web app packaged in an Android WebView. Apply the Apple Design Skill's cross-platform foundations and design principles; **do not impose Apple-only navigation or control conventions on Android**. Use familiar web behavior and Android conventions where they fit.
+WatchTrack shares one web interface across the website, Android WebView, and an iOS WKWebView shell. Apply Apple platform conventions to the native iOS shell and the Apple Design Skill's cross-platform foundations to the shared web UI; **do not impose Apple-only navigation or control conventions on Android**. Use familiar web behavior and platform-appropriate controls on each platform.
 
 ## Non-negotiable workflow
 
@@ -26,7 +26,7 @@ WatchTrack is a web app packaged in an Android WebView. Apply the Apple Design S
 2. State the user's task and the reason for the change in implementation notes or the commit description. Keep changes scoped; avoid unrelated rewrites.
 3. Prefer semantic HTML, native controls, and existing dependencies. Do not add a library for a small effect that CSS or the platform already supports.
 4. Treat accessibility, loading, empty, error, and reduced-motion states as part of the feature—not follow-up polish.
-5. Keep `web/` as the website source of truth and synchronize its files into `WatchTrack-Android/app/src/main/assets/www/`. Verify the two directories match after synchronization.
+5. Keep `web/` as the website source of truth and synchronize its files into both `WatchTrack-Android/app/src/main/assets/www/` and `WatchTrack-iOS/WatchTrack/Resources/www/`. Verify all three directories match after synchronization.
 6. Never commit API tokens, private watch history, machine-specific files, Gradle caches, or generated build intermediates. Only publish the intended APK/release artifacts.
 7. Run the relevant checks before committing, and report exactly what passed, what was not tested, and any remaining limitations. Never claim real-device testing unless it happened.
 
@@ -44,6 +44,8 @@ WatchTrack is a web app packaged in an Android WebView. Apply the Apple Design S
 For website/UI changes, run the available JavaScript syntax checks, inspect HTML/CSS, and test at a narrow phone width and a desktop width. Check keyboard navigation and visible focus, labels/accessible names, empty/error/loading states, reduced motion, and realistic long titles/counts/missing artwork. Use browser automation when available.
 
 For Android changes, build the debug APK with the project's configured Java/Gradle/Android SDK versions and confirm the website assets in the APK match `web/`. Test on a real Android device when available; if not, say that hardware behavior remains unverified.
+
+For iOS changes, generate the Xcode project from `WatchTrack-iOS/project.yml`, build on a macOS runner with `xcodebuild`, and validate the `.ipa` archive structure. Label unsigned IPAs clearly; a package is not directly installable until it is signed with a matching certificate and provisioning profile. Test on a real iPhone when available; if not, say that hardware behavior remains unverified.
 
 For animation changes, perform a focused review against the linked `review-animations` rules. For changes to rendered cards, lists, search, profile, or episode tracking, use realistic worst-case data based on the actual data shape and test the empty and one-item states too.
 

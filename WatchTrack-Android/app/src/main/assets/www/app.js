@@ -881,11 +881,19 @@ function validBackupState(incoming){
 function exportTrackingData(){
   const status=document.getElementById('dataTransferStatus');
   try{
+    const filename=`watchtrack-backup-${new Date().toISOString().slice(0,10)}.json`;
+    const content=JSON.stringify(backupPayload(),null,2);
+    // iOS WKWebView uses the native share sheet; browsers and Android keep
+    // the existing data-URL download flow.
+    const nativeExport=window.webkit?.messageHandlers?.watchTrackExport;
+    if(nativeExport){
+      nativeExport.postMessage({filename,content});
+      if(status) status.textContent='Choose where to save your WatchTrack backup.';
+      return;
+    }
     const a=document.createElement('a');
-    // data: URLs download in browsers and are handed to the Android WebView's
-    // DownloadListener, which saves them to the device's Downloads folder.
-    a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(backupPayload(),null,2));
-    a.download=`watchtrack-backup-${new Date().toISOString().slice(0,10)}.json`;
+    a.href='data:application/json;charset=utf-8,'+encodeURIComponent(content);
+    a.download=filename;
     document.body.appendChild(a);
     a.click();
     a.remove();

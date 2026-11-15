@@ -15,12 +15,12 @@ guard let bitmap = NSBitmapImageRep(
     pixelsWide: size,
     pixelsHigh: size,
     bitsPerSample: 8,
-    samplesPerPixel: 4,
+    samplesPerPixel: 3,
     hasAlpha: false,
     isPlanar: false,
     colorSpaceName: .deviceRGB,
     bytesPerRow: 0,
-    bitsPerPixel: 0
+    bitsPerPixel: 24
 ) else {
     fatalError("Could not create the app icon bitmap.")
 }

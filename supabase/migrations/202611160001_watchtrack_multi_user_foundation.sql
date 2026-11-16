@@ -35,9 +35,12 @@ create table if not exists private.user_roles (
 
 revoke all on table private.user_roles from public, anon, authenticated;
 grant usage on schema public to authenticated;
+revoke all on table public.profiles, public.watchtrack_state from public, anon, authenticated;
 grant select on public.profiles to authenticated;
 grant update (display_name) on public.profiles to authenticated;
-grant select, insert, update, delete on public.watchtrack_state to authenticated;
+grant select, delete on public.watchtrack_state to authenticated;
+grant insert (user_id, state, schema_version) on public.watchtrack_state to authenticated;
+grant update (state, schema_version) on public.watchtrack_state to authenticated;
 grant all on table public.profiles, public.watchtrack_state to service_role;
 grant usage on schema private to service_role;
 grant all on table private.user_roles to service_role;
@@ -120,15 +123,31 @@ begin
 end;
 $$;
 
+revoke all on function public.set_updated_at() from public, anon, authenticated;
+
 drop trigger if exists profiles_set_updated_at on public.profiles;
 create trigger profiles_set_updated_at
   before update on public.profiles
   for each row execute procedure public.set_updated_at();
 
+create or replace function public.bump_watchtrack_state_revision()
+returns trigger
+language plpgsql
+set search_path = ''
+as $
+begin
+  new.updated_at = now();
+  new.revision = old.revision + 1;
+  return new;
+end;
+$;
+
+revoke all on function public.bump_watchtrack_state_revision() from public, anon, authenticated;
+
 drop trigger if exists watchtrack_state_set_updated_at on public.watchtrack_state;
 create trigger watchtrack_state_set_updated_at
   before update on public.watchtrack_state
-  for each row execute procedure public.set_updated_at();
+  for each row execute procedure public.bump_watchtrack_state_revision();
 
 comment on table public.watchtrack_state is
   'One owner-scoped, versioned WatchTrack state document. Keep the legacy JSON shape during migration.';

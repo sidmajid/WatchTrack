@@ -2,7 +2,7 @@
 
 WatchTrack is a responsive movie and TV-show tracker built with HTML, CSS, and JavaScript, with Android WebView and iOS WKWebView wrappers. It uses [The Movie Database (TMDB)](https://www.themoviedb.org/) for catalogue metadata, artwork, cast and crew, and streaming-provider availability.
 
-> **Project status:** personal project / test build. The APK in `release/` is a debug build for testing, not a Play Store release.
+> **Project status:** personal project / test build. The APK in `release/` is a debug build for testing, not a Play Store release. Multi-user development is underway on `feature/secure-multi-user-foundation`; the default branch remains the existing local-storage version until the account flow and migrations are fully tested.
 
 ## Screenshots
 
@@ -73,7 +73,7 @@ The APK output is `WatchTrack-Android/app/build/outputs/apk/debug/app-debug.apk`
 - `.github/workflows/build-apk.yml` — automated Android build workflow.
 - `.github/workflows/build-ios.yml` — automated iOS IPA build workflow.
 
-## Security and attribution
+## About and credits\n\nTMDB and JustWatch acknowledgements are available from the **About & credits** page in the website and bundled app interfaces. The attribution is intentionally kept out of the repeated page footer.\n\n## Multi-user development status\n\nThe implementation plan and initial Supabase schema, RLS policies, per-user TMDB rate limiter, and authenticated server-side TMDB proxy are being developed on `feature/secure-multi-user-foundation`. The sign-up/sign-in UI, client integration, safe local-data migration, and cross-device sync are not yet complete. Until those steps are completed and verified, the current app continues to use local storage and the existing per-device TMDB token setup. See [`docs/MULTI_USER_IMPLEMENTATION_PLAN.md`](docs/MULTI_USER_IMPLEMENTATION_PLAN.md).\n\n## Security and attribution
 
 - Do not commit a TMDB token. Tokens should be entered through **TMDB Setup** and are stored in browser local storage or the Android app's WebView storage.
 - Never include a real token or private watch history in screenshots. The token is sent directly to TMDB for API requests.

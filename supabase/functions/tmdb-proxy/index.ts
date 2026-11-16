@@ -117,7 +117,7 @@ Deno.serve(async (request: Request) => {
     return json({ error: "Request limit reached. Please try again shortly." }, 429, origin, originAllowed);
   }
 
-  const upstreamUrl = new URL(TMBD_PATH(payload.path));
+  const upstreamUrl = new URL(tmdbPath(payload.path));
   for (const [key, value] of Object.entries((payload.query ?? {}) as Record<string, string | number | boolean>)) {
     upstreamUrl.searchParams.set(key, String(value));
   }
@@ -135,6 +135,7 @@ Deno.serve(async (request: Request) => {
       return json({ error: "Catalogue response too large" }, 502, origin, originAllowed);
     }
     if (!upstream.ok) return json({ error: "Catalogue provider request failed", status: upstream.status }, 502, origin, originAllowed);
+    try { JSON.parse(responseText); } catch { return json({ error: "Catalogue provider returned an invalid response" }, 502, origin, originAllowed); }
     return new Response(responseText, {
       status: 200,
       headers: {
@@ -150,6 +151,6 @@ Deno.serve(async (request: Request) => {
   }
 });
 
-function TMBD_PATH(path: string): string {
+function tmdbPath(path: string): string {
   return `${TMDB_API}${path}`;
 }

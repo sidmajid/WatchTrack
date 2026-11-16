@@ -64,8 +64,13 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           activity = Path("WatchTrack-Android/app/src/main/java/com/watchtrack/app/MainActivity.java")
-          source = activity.read_text().replace("settings.setBuiltInZoomControls(false);", "settings.setBuiltInZoomControls(true);").replace("settings.setSupportZoom(false);", "settings.setSupportZoom(true);")
+          source = activity.read_text().replace("settings.setBuiltInZoomControls(false);", "settings.setBuiltInZoomControls(true);").replace("settings.setSupportZoom(false);", "settings.setSupportZoom(true);").replace("WebView.setWebContentsDebuggingEnabled(true);", "WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG);")
           activity.write_text(source)
+          gradle = Path("WatchTrack-Android/app/build.gradle")
+          gradle_source = gradle.read_text()
+          if "buildConfig true" not in gradle_source:
+              gradle_source = gradle_source.replace("compileSdk 35", "compileSdk 35\\n\\n    buildFeatures {\\n        buildConfig true\\n    }")
+              gradle.write_text(gradle_source)
           theme = Path("WatchTrack-Android/app/src/main/res/values/styles.xml")
           theme.write_text(theme.read_text().replace("#7C5CFF", "#C9F36A"))
           PY

@@ -69,7 +69,7 @@ jobs:
           gradle = Path("WatchTrack-Android/app/build.gradle")
           gradle_source = gradle.read_text()
           if "buildConfig true" not in gradle_source:
-              gradle_source = gradle_source.replace("compileSdk 35", "compileSdk 35\\n\\n    buildFeatures {\\n        buildConfig true\\n    }")
+              gradle_source = gradle_source.replace("compileSdk 35", "compileSdk 35\n\n    buildFeatures {\n        buildConfig true\n    }")
               gradle.write_text(gradle_source)
           theme = Path("WatchTrack-Android/app/src/main/res/values/styles.xml")
           theme.write_text(theme.read_text().replace("#7C5CFF", "#C9F36A"))

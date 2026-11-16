@@ -134,13 +134,13 @@ create or replace function public.bump_watchtrack_state_revision()
 returns trigger
 language plpgsql
 set search_path = ''
-as $
+as $watchtrack$
 begin
   new.updated_at = now();
   new.revision = old.revision + 1;
   return new;
 end;
-$;
+$watchtrack$;
 
 revoke all on function public.bump_watchtrack_state_revision() from public, anon, authenticated;
 

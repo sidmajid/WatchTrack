@@ -20,9 +20,9 @@ create table if not exists public.watchtrack_state (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint watchtrack_state_is_object check (jsonb_typeof(state) = 'object'),
-  constraint watchtrack_state_has_movies check (jsonb_typeof(state->'watchedMovies') = 'array'),
-  constraint watchtrack_state_has_tv_progress check (jsonb_typeof(state->'tvProgress') = 'object'),
-  constraint watchtrack_state_has_wishlist check (jsonb_typeof(state->'wishlist') = 'array')
+  constraint watchtrack_state_has_movies check (state ? 'watchedMovies' and jsonb_typeof(state->'watchedMovies') = 'array'),
+  constraint watchtrack_state_has_tv_progress check (state ? 'tvProgress' and jsonb_typeof(state->'tvProgress') = 'object'),
+  constraint watchtrack_state_has_wishlist check (state ? 'wishlist' and jsonb_typeof(state->'wishlist') = 'array')
 );
 
 -- Roles are deliberately isolated from the client-facing profile table.

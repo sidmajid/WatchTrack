@@ -54,7 +54,8 @@ public class MainActivity extends Activity {
         settings.setAllowContentAccess(false);
         settings.setUserAgentString(settings.getUserAgentString() + " WatchTrackAndroid/1.0");
 
-        WebView.setWebContentsDebuggingEnabled(true);
+        // Remote inspection is available only in debug builds; production WebViews stay closed.
+        WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG);
         webView.setWebChromeClient(new BackupChromeClient());
         webView.setWebViewClient(new LocalAssetWebViewClient());
         webView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> {

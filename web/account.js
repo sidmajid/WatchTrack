@@ -93,10 +93,14 @@
       backup(local);
       const combined=normalize(merge(cloud,local));
       const payload={user_id:currentUser.id,state:combined,schema_version:1};
-      const write=row
-        ? await client.from("watchtrack_state").update({state:combined,schema_version:1}).eq("user_id",currentUser.id).eq("revision",row.revision)
-        : await client.from("watchtrack_state").insert(payload);
-      if(write.error)throw write.error;
+      if(row){
+        const {data:updated,error:writeError}=await client.from("watchtrack_state").update({state:combined,schema_version:1}).eq("user_id",currentUser.id).eq("revision",row.revision).select("revision");
+        if(writeError)throw writeError;
+        if(!updated?.length)throw new Error("A newer cloud update was detected. Migration paused; your local copy is unchanged.");
+      } else {
+        const {error:writeError}=await client.from("watchtrack_state").insert(payload);
+        if(writeError)throw writeError;
+      }
       localStorage.setItem(STATE_KEY,JSON.stringify(combined));
       localStorage.setItem("watchtrack-cloud-migrated:"+currentUser.id,"1");
       status("Migration completed. Your backup was downloaded and merged library saved to your account.");

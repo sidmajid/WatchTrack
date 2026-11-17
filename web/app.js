@@ -48,7 +48,7 @@ function loadState(){
   try { return JSON.parse(localStorage.getItem(STATE_KEY)) || defaultState(); }
   catch { return defaultState(); }
 }
-function saveState(){ localStorage.setItem(STATE_KEY, JSON.stringify(state)); }
+function saveState(){ localStorage.setItem(STATE_KEY, JSON.stringify(state)); if(window.watchTrackCloudSync) window.watchTrackCloudSync(); }
 const state = loadState();
 
 function getToken(){ return (localStorage.getItem(TOKEN_KEY) || '').trim(); }

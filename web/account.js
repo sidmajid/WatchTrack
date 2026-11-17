@@ -51,7 +51,7 @@
     client=window.supabase.createClient(c.url,c.publishableKey,{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:true}});
     const {data,error}=await client.auth.getSession(); if(error) throw error;
     currentUser=data.session?.user||null;
-    client.auth.onAuthStateChange((_event,session)=>{currentUser=session?.user||null;render();});
+    client.auth.onAuthStateChange((_event,session)=>{currentUser=session?.user||null;render();if(currentUser)scheduleSync();});
     render();
   };
   const handleAuth = async event => {
@@ -98,12 +98,13 @@
         : await client.from("watchtrack_state").insert(payload);
       if(write.error)throw write.error;
       localStorage.setItem(STATE_KEY,JSON.stringify(combined));
+      localStorage.setItem("watchtrack-cloud-migrated:"+currentUser.id,"1");
       status("Migration completed. Your backup was downloaded and merged library saved to your account.");
     }catch(e){status(e.message||"Migration failed. Your local copy remains on this device.",true);}
     finally{if(b){b.disabled=false;b.textContent="Back up & migrate library";}}
   };
   const syncNow=async()=>{
-    if(!client||!currentUser||syncBusy){if(syncBusy)syncAgain=true;return;} syncBusy=true;
+    if(!client||!currentUser||syncBusy||localStorage.getItem("watchtrack-cloud-migrated:"+currentUser.id)!=="1"){if(syncBusy)syncAgain=true;return;} syncBusy=true;
     try{
       const local=normalize(localState());
       const {data:row,error}=await client.from("watchtrack_state").select("state,revision").eq("user_id",currentUser.id).maybeSingle();

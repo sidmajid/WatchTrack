@@ -33,7 +33,13 @@ There is no account system or trusted server in the current app. A client-side-o
 6. Validate request paths, methods, parameters, country codes, response sizes, and rate limits in the proxy. Do not create an open proxy or accept arbitrary upstream URLs.
 7. Configure HTTPS-only production URLs, restrictive CORS allowlists, auth email templates, redirect allowlists, session expiry/refresh policy, and secret rotation.
 
-### Phase 2 — account experience (critical)
+### Phase 2 — account experience (critical) — initial client implementation added
+
+- Public Supabase project URL and publishable key are configured in `web/supabase-config.js`; these are client-safe values, not privileged secrets.
+- Email sign-up, sign-in, sign-out, password reset, session restoration, and a profile-page account panel are implemented in `web/account.js`.
+- The account flow is included on website home, discover, and profile pages. Android and iOS build workflows synchronize the canonical `web/` assets into their bundled app resources.
+- Local-to-cloud migration is explicit, previews local/cloud counts, downloads a JSON backup, merges the existing state shape, and retains the local copy. Cloud sync is gated until migration completes and uses revision checks to pause on detected concurrent updates.
+- **Not production-hardened yet:** the current Supabase JS client uses its default persisted browser session storage. Implement HttpOnly cookie sessions for web and native secure credential storage for Android/iOS before public release. See `docs/SUPABASE_DEPLOYMENT.md`.
 
 1. Add sign-up, sign-in, sign-out, email verification, password reset, and session restoration.
 2. Use accessible loading, validation, error, and rate-limit states. Avoid leaking whether an email address has an account.
